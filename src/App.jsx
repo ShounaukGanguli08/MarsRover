@@ -64,18 +64,42 @@ const roversData = [
   }
 ]
 
-function generateDefaultSols(roverName) {
-  const rover = roversData.find(r => r.name === roverName)
-  if (!rover) return []
+function generateDefaultDates() {
+  const dates = []
+  const today = new Date()
   
-  const maxSol = rover.maxSol
-  const solArray = []
-  
-  for (let i = maxSol; i >= 0; i -= 10) {
-    solArray.push(i)
+  for (let i = 0; i < 365; i++) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    dates.push(date.toISOString().split('T')[0])
   }
   
-  return solArray
+  return ['all', ...dates]
+}
+
+async function fetchAvailableDates(roverName) {
+  try {
+    const query = encodeURIComponent(`${roverName} Mars Rover`)
+    const url = `${NASA_IMAGE_API}?q=${query}&media_type=image&page_size=100`
+    const response = await fetch(url)
+    const data = await response.json()
+    const items = data.collection?.items || []
+    
+    const dateSet = new Set()
+    items.forEach(item => {
+      const date = item.data?.[0]?.date_created
+      if (date) {
+        const dateOnly = date.split('T')[0]
+        dateSet.add(dateOnly)
+      }
+    })
+    
+    const dateArray = Array.from(dateSet).sort().reverse() // descending (newest first)
+    return dateArray.length > 0 ? ['all', ...dateArray] : ['all', ...generateDefaultDates()]
+  } catch (error) {
+    console.error('Error fetching available dates:', error)
+    return ['all', ...generateDefaultDates()] // fallback
+  }
 }
 
 function App() {
@@ -83,8 +107,8 @@ function App() {
   const [selectedRover, setSelectedRover] = useState('')
   const [cameras, setCameras] = useState([])
   const [selectedCamera, setSelectedCamera] = useState('')
-  const [sols, setSols] = useState([])
-  const [selectedSol, setSelectedSol] = useState('')
+  const [dates, setDates] = useState([])
+  const [selectedDate, setSelectedDate] = useState('')
   const [photos, setPhotos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -104,85 +128,68 @@ function App() {
     } else {
       setCameras([])
       setSelectedCamera('')
-      setSols([])
-      setSelectedSol('')
+      setDates([])
+      setSelectedDate('')
     }
   }, [selectedRover, rovers])
 
-  const fetchManifest = (roverName) => {
-    const url = `${API_BASE}/manifests/${roverName}?api_key=${API_KEY}`
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        if (data.photo_manifest && data.photo_manifest.photos) {
-          const solData = data.photo_manifest.photos.map(p => p.sol).sort((a, b) => b - a)
-          setSols(solData)
-          setSelectedSol('')
-        } else {
-          const defaultSols = generateDefaultSols(roverName)
-          setSols(defaultSols)
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load manifest, using default sols:', err)
-        const defaultSols = generateDefaultSols(roverName)
-        setSols(defaultSols)
-      })
+  const fetchManifest = async (roverName) => {
+    const dates = await fetchAvailableDates(roverName)
+    setDates(dates)
   }
 
   const handleSearch = () => {
-    if (!selectedRover || !selectedSol) {
-      setError('Please select a rover and a sol')
+    if (!selectedRover || !selectedDate) {
+      setError('Please select a rover and a date')
       return
     }
     setLoading(true)
     setError('')
     setPhotos([])
 
-    // Use mock data since the API is unavailable
-    const mockPhotos = generateMockPhotos(selectedRover, selectedSol, selectedCamera)
-    
-    // Simulate network delay
-    setTimeout(() => {
-      if (mockPhotos.length > 0) {
-        setPhotos(mockPhotos)
-      } else {
-        setError('No photos found for this sol and camera combination')
-      }
-      setLoading(false)
-    }, 500)
+    const queryParts = [selectedRover, 'Mars Rover']
+    if (selectedCamera) {
+      queryParts.push(selectedCamera.replace(/_/g, ' '))
+    }
+    // Always search for the rover without date filter, then filter client-side
+    // This ensures consistency between "All Dates" and individual date selections
+    const query = encodeURIComponent(queryParts.join(' '))
+    const url = `${NASA_IMAGE_API}?q=${query}&media_type=image&page_size=100`
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        const items = data.collection?.items || []
+        const filtered = items
+          .map(item => {
+            const link = item.links?.find(link => link.render === 'image')
+            const datum = item.data?.[0]
+            if (!link || !datum) return null
+            return {
+              id: datum.nasa_id,
+              img_src: link.href,
+              camera: { full_name: datum.instrument || datum.secondary_creator || datum.title || selectedCamera || 'Mars Rover Camera' },
+              earth_date: datum.date_created ? datum.date_created.split('T')[0] : 'Unknown'
+            }
+          })
+          .filter(Boolean)
+          // Filter by date client-side if a specific date is selected
+          .filter(photo => selectedDate === 'all' || photo.earth_date === selectedDate)
+
+        if (filtered.length === 0) {
+          setError(`No images found in NASA Image Library for this rover${selectedDate === 'all' ? '' : ` on ${selectedDate}`}`)
+        } else {
+          setPhotos(filtered)
+        }
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Error fetching NASA image library:', err)
+        setError('Failed to load NASA Image Library')
+        setLoading(false)
+      })
   }
 
-  const generateMockPhotos = (rover, sol, camera) => {
-    // Generate realistic mock photos based on rover and sol
-    const mockData = {
-      'Curiosity-1000': [
-        { id: 1, img_src: 'https://images-assets.nasa.gov/image/PIA16920/PIA16920~orig.jpg', camera: { full_name: 'Front Hazard Avoidance Camera' }, sol: 1000, earth_date: '2013-09-16' },
-        { id: 2, img_src: 'https://images-assets.nasa.gov/image/PIA16921/PIA16921~orig.jpg', camera: { full_name: 'Rear Hazard Avoidance Camera' }, sol: 1000, earth_date: '2013-09-16' },
-        { id: 3, img_src: 'https://images-assets.nasa.gov/image/PIA16922/PIA16922~orig.jpg', camera: { full_name: 'Navigation Camera' }, sol: 1000, earth_date: '2013-09-16' }
-      ],
-      'Curiosity-100': [
-        { id: 4, img_src: 'https://images-assets.nasa.gov/image/PIA16083/PIA16083~orig.jpg', camera: { full_name: 'Mast Camera' }, sol: 100, earth_date: '2012-11-08' },
-        { id: 5, img_src: 'https://images-assets.nasa.gov/image/PIA16084/PIA16084~orig.jpg', camera: { full_name: 'Navigation Camera' }, sol: 100, earth_date: '2012-11-08' }
-      ],
-      'Perseverance-100': [
-        { id: 6, img_src: 'https://images-assets.nasa.gov/image/PIA23769/PIA23769~orig.jpg', camera: { full_name: 'Mast Camera Zoom - Left' }, sol: 100, earth_date: '2021-05-03' },
-        { id: 7, img_src: 'https://images-assets.nasa.gov/image/PIA23770/PIA23770~orig.jpg', camera: { full_name: 'Navigation Camera - Left' }, sol: 100, earth_date: '2021-05-03' }
-      ],
-      'Opportunity-100': [
-        { id: 8, img_src: 'https://images-assets.nasa.gov/image/PIA03876/PIA03876~orig.jpg', camera: { full_name: 'Front Hazard Avoidance Camera' }, sol: 100, earth_date: '2004-05-19' },
-        { id: 9, img_src: 'https://images-assets.nasa.gov/image/PIA03877/PIA03877~orig.jpg', camera: { full_name: 'Panoramic Camera' }, sol: 100, earth_date: '2004-05-19' }
-      ]
-    }
-
-    const key = `${rover}-${sol}`
-    const photos = mockData[key] || mockData['Curiosity-1000'] || []
-    
-    if (camera) {
-      return photos.filter(p => p.camera.full_name.includes(camera.split('_')[0]))
-    }
-    return photos
-  }
 
   return (
     <div className="app">
@@ -194,10 +201,10 @@ function App() {
             <option key={rover.name} value={rover.name}>{rover.name}</option>
           ))}
         </select>
-        <select value={selectedSol} onChange={e => setSelectedSol(e.target.value)} disabled={!selectedRover || sols.length === 0}>
-          <option value="">Select Sol (Martian day)</option>
-          {sols.map(sol => (
-            <option key={sol} value={sol}>Sol {sol}</option>
+        <select value={selectedDate} onChange={e => setSelectedDate(e.target.value)} disabled={!selectedRover || dates.length === 0}>
+          <option value="">Select Date</option>
+          {dates.map(date => (
+            <option key={date} value={date}>{date === 'all' ? 'All Dates' : date}</option>
           ))}
         </select>
         <select value={selectedCamera} onChange={e => setSelectedCamera(e.target.value)} disabled={!selectedRover}>
@@ -206,7 +213,7 @@ function App() {
             <option key={camera.name} value={camera.name}>{camera.full_name}</option>
           ))}
         </select>
-        <button onClick={handleSearch} disabled={loading || !selectedSol}>
+        <button onClick={handleSearch} disabled={loading || !selectedDate}>
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
@@ -217,11 +224,11 @@ function App() {
           photos.map(photo => (
             <div key={photo.id} className="photo">
               <img src={photo.img_src} alt={photo.camera.full_name} />
-              <p>{photo.camera.full_name} - Sol {photo.sol}</p>
+              <p>{photo.camera.full_name}</p>
               <p className="date">{photo.earth_date}</p>
             </div>
           ))
-        ) : !loading && !error && selectedSol && (
+        ) : !loading && !error && selectedDate && (
           <p className="no-results">No photos found</p>
         )}
       </div>
