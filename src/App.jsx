@@ -217,8 +217,13 @@ function App() {
           {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
-      {error && <p className="error">{error}</p>}
-      {loading && <p className="loading">Loading photos...</p>}
+      {error && <div className="error">{error}</div>}
+      {loading && (
+        <div className="loading">
+          <div className="spinner" />
+          <span>Loading photos...</span>
+        </div>
+      )}
       <div className="photos">
         {photos.length > 0 ? (
           photos.map(photo => (

@@ -1,97 +1,188 @@
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: #000;
+  color: #f5f5f5;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 .app {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
-  font-family: Arial, sans-serif;
+  padding: 32px 24px 48px;
+  min-height: 100vh;
 }
 
 h1 {
   text-align: center;
-  color: #d2cbcb;
+  color: #fff;
+  margin-bottom: 24px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: clamp(2rem, 3vw, 3rem);
+  animation: fadeInUp 0.7s ease both;
 }
 
 .form {
   display: flex;
-  gap: 10px;
-  justify-content: center;
-  margin-bottom: 20px;
   flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(12px);
+  animation: fadeInUp 0.7s ease 0.1s both;
 }
 
-select, input, button {
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+select, button {
+  min-width: 180px;
+  padding: 14px 18px;
+  font-size: 0.96rem;
+  color: #f5f5f5;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+select:hover, button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+select:focus, button:focus {
+  outline: none;
+  border-color: #fff;
+  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
 }
 
 button {
-  background-color: #007bff;
-  color: white;
+  background: #fff;
+  color: #090909;
+  font-weight: 700;
+  letter-spacing: 0.04em;
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background: #ececec;
 }
 
 button:disabled {
-  background-color: #ccc;
+  background: #222;
+  color: #777;
   cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
 .error {
-  color: red;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto 24px;
+  padding: 16px 20px;
+  color: #fff;
+  background: rgba(255, 64, 64, 0.16);
+  border: 1px solid rgba(255, 64, 64, 0.3);
+  border-radius: 18px;
   text-align: center;
-  margin-bottom: 20px;
-  padding: 10px;
-  background-color: #ffe0e0;
-  border-radius: 4px;
+  animation: fadeInUp 0.5s ease both;
 }
 
 .loading {
-  text-align: center;
-  color: #007bff;
-  margin-bottom: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  width: 100%;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  color: #f0f0f0;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  animation: fadeInUp 0.5s ease both;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
 }
 
 .photos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
 }
 
 .photo {
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: #0f0f0f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 26px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
+  transform: translateY(0);
+  animation: popIn 0.55s ease both;
+}
+
+.photo:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.55);
 }
 
 .photo img {
   width: 100%;
-  height: 200px;
+  aspect-ratio: 16 / 10;
   object-fit: cover;
+  display: block;
 }
 
 .photo p {
-  padding: 10px;
+  padding: 16px 18px;
   margin: 0;
-  background-color: #f9f9f9;
-  text-align: center;
-  font-weight: bold;
+  background: #0f0f0f;
+  color: #e6e6e6;
+  text-align: left;
 }
 
 .photo .date {
-  font-size: 12px;
-  padding: 5px 10px;
-  background-color: #e8e8e8;
-  font-weight: normal;
+  font-size: 0.9rem;
+  padding-top: 10px;
+  color: #999;
+  background: transparent;
+  font-weight: 400;
 }
 
 .no-results {
   text-align: center;
-  color: #666;
+  color: #bbb;
   grid-column: 1 / -1;
-  padding: 40px 20px;
+  padding: 42px 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
